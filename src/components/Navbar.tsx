@@ -1,6 +1,8 @@
-import { Link, useLocation } from 'react-router-dom';
-import { Home, Gamepad2, Search, Users, LayoutDashboard, User, Sparkles } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Home, Gamepad2, Search, Users, LayoutDashboard, User, Sparkles, LogIn, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
@@ -13,6 +15,13 @@ const navItems = [
 
 export function Navbar() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50">
@@ -50,6 +59,29 @@ export function Navbar() {
                 </Link>
               );
             })}
+            
+            {/* Auth Button */}
+            {user ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleSignOut}
+                className="ml-2 gap-2"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </Button>
+            ) : (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => navigate('/auth')}
+                className="ml-2 gap-2 bg-gradient-to-r from-primary to-accent"
+              >
+                <LogIn className="w-4 h-4" />
+                Sign In
+              </Button>
+            )}
           </div>
 
           {/* Mobile Navigation */}
@@ -73,6 +105,22 @@ export function Navbar() {
                 </Link>
               );
             })}
+            
+            {user ? (
+              <button
+                onClick={handleSignOut}
+                className="p-2 rounded-lg text-muted-foreground"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            ) : (
+              <Link
+                to="/auth"
+                className="p-2 rounded-lg text-primary"
+              >
+                <LogIn className="w-5 h-5" />
+              </Link>
+            )}
           </div>
         </div>
       </div>
