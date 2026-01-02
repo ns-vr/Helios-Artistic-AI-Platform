@@ -1,7 +1,20 @@
 project_id = "uurqkdoxcqmybqicokfy"
 
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
 [functions.analyze-art]
 verify_jwt = false
 
 [functions.helios-chat]
+verify_jwt = false
+
+[functions.generate-art]
+verify_jwt = false
+
+[functions.apply-avatar-filter]
 verify_jwt = false
