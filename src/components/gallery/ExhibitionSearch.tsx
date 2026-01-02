@@ -57,26 +57,26 @@ export function ExhibitionSearch() {
         </div>
         
         <div className="flex gap-3 flex-wrap">
-          <Select value={selectedCity} onValueChange={setSelectedCity}>
+          <Select value={selectedCity || "all"} onValueChange={(val) => setSelectedCity(val === "all" ? "" : val)}>
             <SelectTrigger className="w-[180px]">
               <MapPin className="w-4 h-4 mr-2" />
               <SelectValue placeholder="All Cities" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Cities</SelectItem>
+              <SelectItem value="all">All Cities</SelectItem>
               {getCities().map(city => (
                 <SelectItem key={city} value={city}>{city}</SelectItem>
               ))}
             </SelectContent>
           </Select>
           
-          <Select value={selectedGenre} onValueChange={setSelectedGenre}>
+          <Select value={selectedGenre || "all"} onValueChange={(val) => setSelectedGenre(val === "all" ? "" : val)}>
             <SelectTrigger className="w-[180px]">
               <Filter className="w-4 h-4 mr-2" />
               <SelectValue placeholder="All Genres" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Genres</SelectItem>
+              <SelectItem value="all">All Genres</SelectItem>
               {getGenres().map(genre => (
                 <SelectItem key={genre} value={genre}>{genre}</SelectItem>
               ))}
