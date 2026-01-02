@@ -4,9 +4,13 @@
 
 **URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
 
-## How can I edit this code?
+## Summary
 
-There are several ways of editing your application.
+ Helios is a multimodal art education and creation platform that combines gamified learning, live exhibition discovery, community collaboration, and AI-powered creative tools. Powered by Google Gemini (Nano Banana Pro + Veo), it transforms how users learn art history, discover real-world shows, and create remixed masterpieces—all wrapped in a peaceful, therapeutic aesthetic with light pink/blue/purple gradients and gold/silver accents.
+
+ ## Design Archetype
+ Soft UI meets Modern Editorial — We're blending the tactile, calming depth of Neumorphism (pastel tones, subtle shadows, pill shapes) with the sophistication of editorial design (cream backgrounds, elegant serif accents, sharp imagery). This creates a sanctuary aesthetic where learning feels meditative, not overwhelming. The UI should feel like flipping through a luxury art book while floating in a cloud.
+
 
 **Use Lovable**
 
@@ -36,11 +40,16 @@ npm i
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+**Key Components**
+Key Components
+- Floating Chatbot Bubble ("Helios Muse"): Silver orb with gold glow, always accessible; expands to full-screen multimodal chat interface
+- Memory Game Cards ("Remember the Master"): Soft-edged cards with painter portraits and artwork thumbnails; flip animations with gentle bounce
+- Search Gallery Grid: Exhibition cards with location pins, date badges, and "Must See" gold accent ribbons
+- Community Feed: Post cards with user avatars, artwork thumbnails, collaboration tags ("Therapeutic", "Experimental"), and gentle like/comment interactions
+- Dashboard Tabs: Segmented control with icons for Scanner, Generator, Game Progress, Gemini Spark, AR Preview
+- Quick Action Buttons: Pill-shaped CTAs for "Scan Art", "Nano Edit", "Veo Animate", "Voice Narrate"
+- Profile Badge Wall: Gold/silver badge icons for achievements ("Impressionism Pro", "Renaissance Whisperer") with subtle glow effects
+- Mood Selector (Login): Circular emotion icons (peaceful, curious, inspired) with soft color-coded halos
 
 **Use GitHub Codespaces**
 
@@ -60,13 +69,11 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
-## How can I deploy this project?
+
 
 Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
 
-## Can I connect a custom domain to my Lovable project?
 
-Yes, you can!
 
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
