@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Image, Mic, Gamepad2, Search, Users, HelpCircle, Sparkles } from 'lucide-react';
+import { MessageCircle, X, Send, Image, Gamepad2, Search, Users, HelpCircle, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface Message {
   id: string;
@@ -33,6 +35,7 @@ export function HeliosMuse() {
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -43,7 +46,7 @@ export function HeliosMuse() {
   }, [messages]);
 
   const handleSend = async () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || isTyping) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -53,52 +56,123 @@ export function HeliosMuse() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = inputValue;
     setInputValue('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const responses: { [key: string]: string } = {
-        'game': 'Ready to test your art knowledge? Navigate to the Game tab to play "Remember the Master" - match paintings to their creators and earn XP! 🎮',
-        'scan': 'I can help analyze artwork! For now, try uploading an image or describe a painting you\'d like to learn about.',
-        'show': 'Looking for art exhibitions? Check out the Gallery tab to discover amazing shows near you, from Van Gogh immersive experiences to contemporary showcases.',
-        'community': 'The Helios community is vibrant! Visit the Community page to see today\'s spotlight artwork, join learning circles, or find collaborators.',
-        'default': 'What a beautiful question! Art connects us across time and space. Let me guide you - would you like to explore paintings, play a game, or discover exhibitions?'
-      };
+    try {
+      // Prepare messages for API (exclude system greeting)
+      const apiMessages = [...messages.slice(1), userMessage].map(m => ({
+        role: m.role,
+        content: m.content
+      }));
 
-      const lowerInput = inputValue.toLowerCase();
-      let responseText = responses.default;
-      
-      if (lowerInput.includes('game') || lowerInput.includes('play') || lowerInput.includes('quiz')) {
-        responseText = responses.game;
-      } else if (lowerInput.includes('scan') || lowerInput.includes('image') || lowerInput.includes('analyze')) {
-        responseText = responses.scan;
-      } else if (lowerInput.includes('show') || lowerInput.includes('exhibition') || lowerInput.includes('gallery')) {
-        responseText = responses.show;
-      } else if (lowerInput.includes('community') || lowerInput.includes('collab') || lowerInput.includes('artist')) {
-        responseText = responses.community;
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/helios-chat`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ messages: apiMessages }),
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          toast({
+            title: "Rate limited",
+            description: "Please wait a moment and try again.",
+            variant: "destructive"
+          });
+          throw new Error("Rate limited");
+        }
+        if (response.status === 402) {
+          toast({
+            title: "Credits exhausted",
+            description: "AI credits are low. Please try again later.",
+            variant: "destructive"
+          });
+          throw new Error("Credits exhausted");
+        }
+        throw new Error("Failed to get response");
       }
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: responseText,
-        timestamp: new Date()
-      };
+      // Stream the response
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let assistantContent = '';
+      let assistantMessageId = (Date.now() + 1).toString();
 
-      setMessages(prev => [...prev, assistantMessage]);
+      // Add empty assistant message
+      setMessages(prev => [...prev, {
+        id: assistantMessageId,
+        role: 'assistant',
+        content: '',
+        timestamp: new Date()
+      }]);
+
+      let buffer = '';
+      while (reader) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        
+        let newlineIndex: number;
+        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+          let line = buffer.slice(0, newlineIndex);
+          buffer = buffer.slice(newlineIndex + 1);
+
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (line.startsWith(':') || line.trim() === '') continue;
+          if (!line.startsWith('data: ')) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === '[DONE]') continue;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              assistantContent += content;
+              setMessages(prev => prev.map(m => 
+                m.id === assistantMessageId 
+                  ? { ...m, content: assistantContent }
+                  : m
+              ));
+            }
+          } catch {
+            // Incomplete JSON, continue
+          }
+        }
+      }
+
+    } catch (error: any) {
+      console.error('Chat error:', error);
+      // Add fallback message on error
+      if (!error.message.includes('Rate limited') && !error.message.includes('Credits')) {
+        setMessages(prev => [...prev, {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: "Apologies, I'm having a moment of artistic contemplation. Please try again shortly. ✨",
+          timestamp: new Date()
+        }]);
+      }
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   const handleQuickAction = (action: string) => {
     const actionMessages: { [key: string]: string } = {
-      scan_art: 'I\'d like to scan and analyze an artwork',
-      learn_painter: 'Tell me about a famous painter',
-      play_game: 'I want to play the art memory game',
-      search_exhibitions: 'Find art exhibitions near me',
-      view_community: 'Show me the community highlights',
-      profile_help: 'Help me with my profile settings'
+      scan_art: 'How do I scan and analyze an artwork?',
+      learn_painter: 'Tell me about Vincent van Gogh',
+      play_game: 'How do I play the art memory game?',
+      search_exhibitions: 'How can I find art exhibitions?',
+      view_community: 'What can I do in the community?',
+      profile_help: 'Help me understand my profile and badges'
     };
 
     setInputValue(actionMessages[action] || '');
@@ -150,7 +224,7 @@ export function HeliosMuse() {
               </div>
               <div>
                 <h3 className="font-serif font-semibold text-foreground">Helios Muse</h3>
-                <p className="text-xs text-muted-foreground">Your art companion</p>
+                <p className="text-xs text-muted-foreground">AI Art Companion</p>
               </div>
             </div>
             <Button 
@@ -191,7 +265,7 @@ export function HeliosMuse() {
                 )}
               >
                 <div className={cn(
-                  "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm",
+                  "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap",
                   message.role === 'user'
                     ? "bg-primary text-primary-foreground rounded-br-md"
                     : "bg-muted text-foreground rounded-bl-md"
@@ -201,7 +275,7 @@ export function HeliosMuse() {
               </div>
             ))}
             
-            {isTyping && (
+            {isTyping && messages[messages.length - 1]?.content === '' && (
               <div className="flex justify-start">
                 <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3 flex gap-1">
                   <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: '0ms' }} />
@@ -217,26 +291,25 @@ export function HeliosMuse() {
           {/* Input */}
           <div className="p-4 border-t border-border/50 bg-card">
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground">
-                <Image className="w-5 h-5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground">
-                <Mic className="w-5 h-5" />
-              </Button>
               <Input
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
                 placeholder="Ask about art..."
+                disabled={isTyping}
                 className="flex-1 bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-primary"
               />
               <Button 
                 onClick={handleSend}
-                disabled={!inputValue.trim()}
+                disabled={!inputValue.trim() || isTyping}
                 size="icon"
                 className="shrink-0 gradient-button text-primary-foreground"
               >
-                <Send className="w-4 h-4" />
+                {isTyping ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
               </Button>
             </div>
           </div>

@@ -1,1 +1,7 @@
 project_id = "uurqkdoxcqmybqicokfy"
+
+[functions.analyze-art]
+verify_jwt = false
+
+[functions.helios-chat]
+verify_jwt = false
